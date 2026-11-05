@@ -484,11 +484,12 @@ if (graph.screens?.length) report.push(`SCREENS  ${graph.screens.length} detecte
 report.push(graph.recent
   ? `RECENT WORK  ${graph.recent.items.length} card(s) highlighted across ${graph.recent.tasks.length} task(s)`
   : `RECENT WORK  none highlighted${fs.existsSync(recentFile) ? '' : ' (no recent-work.json)'}`);
-// point future Claude Code sessions in this project at the map. Codex has no personal, uncommitted
-// equivalent (AGENTS.md is shared with the team), so a map built by Codex leaves the project's notes alone.
+// point future Claude Code sessions in this project at the map. Codex and OpenCode have no personal, uncommitted
+// equivalent (AGENTS.md is shared with the team), so a map built by either leaves the project's notes alone.
 if (agent === 'codex') report.push('AGENT  Codex: questions on the map run through Codex');
+else if (agent === 'opencode') report.push('AGENT  OpenCode: questions on the map run through OpenCode');
 if (scan.blueprint) report.push('BLUEPRINT  planned, not built yet: drawn from floorplan/plan.json');
-else if (agent !== 'codex' && !args['no-claude-md']) report.push(`CLAUDE.LOCAL.MD  ${writeClaudeMd(root, outDir, { add: !!args['claude-md'] })}`);
+else if (agent !== 'codex' && agent !== 'opencode' && !args['no-claude-md']) report.push(`CLAUDE.LOCAL.MD  ${writeClaudeMd(root, outDir, { add: !!args['claude-md'] })}`);
 report.push(trackedWarning ? `GIT  ! ${trackedWarning}` : 'GIT  floorplan/ is kept out of git (it ignores itself)');
 report.push('');
 report.push(`✓ wrote ${path.relative(root, path.join(outDir, 'index.html'))} (${fmtNum(Math.round(html.length / 1024))} KB) and graph.json`);

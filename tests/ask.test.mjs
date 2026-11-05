@@ -69,6 +69,34 @@ test('with only Codex installed, questions run through Codex, read-only and out 
   assert.match(call.input, /node floorplan\/query\.mjs/);
 });
 
+test('with only OpenCode installed, questions run through its plan agent, and follow-ups reuse its session', async () => {
+  const s = await serve({ FLOORPLAN_CLAUDE: path.join(root, 'no-such-cli'), FLOORPLAN_CODEX: path.join(root, 'no-such-cli'), FLOORPLAN_OPENCODE: path.join(FAKE, 'fake-opencode.mjs') });
+  assert.equal(s.page.engine, 'opencode');
+  assert.equal(s.page.cli, true);
+
+  const events = await ask(s, 'How do refunds work?');
+  assert.deepEqual(pick(events, 'progress').map((p) => p.text), ['Searching the map for "refund"']);
+  const [answer] = pick(events, 'answer');
+  assert.equal(answer.title, 'Refunds');
+  assert.deepEqual(answer.items.map((i) => i.id), ['f:shop-api/routes/orders.js']);
+  assert.equal(answer.session, 'ses_test');
+
+  const [call] = s.calls();
+  const flag = (name) => call.args[call.args.indexOf(name) + 1];
+  assert.equal(call.args[0], 'run');
+  assert.equal(flag('--format'), 'json');
+  assert.equal(flag('--agent'), 'plan');
+  assert.ok(!call.args.includes('--session'), 'a first question starts a fresh OpenCode session');
+  assert.match(call.args[call.args.length - 1], /How do refunds work\?/);
+  assert.match(call.args[call.args.length - 1], /node floorplan\/query\.mjs/);
+
+  // an intermediate narration before the final text must not win; the last text part is the answer
+  const [second] = pick(await ask(s, 'Who can ask for one?', answer.session), 'answer');
+  assert.equal(second.session, 'ses_test');
+  const [, followup] = s.calls();
+  assert.equal(followup.args[followup.args.indexOf('--session') + 1], 'ses_test');
+});
+
 test('Codex gets an answer schema it accepts: every property required, nothing extra', async () => {
   const s = await serve({ FLOORPLAN_CLAUDE: path.join(root, 'no-such-cli'), FLOORPLAN_CODEX: path.join(FAKE, 'fake-codex.mjs') });
   await ask(s, 'What is this?');

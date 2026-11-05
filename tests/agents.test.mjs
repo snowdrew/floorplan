@@ -15,6 +15,20 @@ test('Codex is recognised by the variables it sets for every command', () => {
   assert.equal(detectAgent({}, { CLAUDECODE: '1' }), 'claude');
 });
 
+test('OpenCode is recognised by the variables it sets for every command', () => {
+  assert.equal(detectAgent({}, { OPENCODE: '1' }), 'opencode');
+  assert.equal(detectAgent({}, { OPENCODE_SESSION_ID: 'ses_abc' }), 'opencode');
+  assert.equal(detectAgent({}, {}), 'claude');
+  assert.equal(detectAgent({}, { OPENCODE_SESSION_ID: 'ses_abc' }), 'opencode');
+  assert.equal(detectAgent({}, { CODEX_THREAD_ID: 'abc' }), 'codex');
+});
+
+test('--agent and FLOORPLAN_AGENT reach OpenCode too, and nonsense is ignored', () => {
+  assert.equal(detectAgent({ agent: 'opencode' }, {}), 'opencode');
+  assert.equal(detectAgent({}, { FLOORPLAN_AGENT: 'OpenCode' }), 'opencode');
+  assert.equal(detectAgent({ agent: 'gpt' }, { OPENCODE: '1' }), 'opencode');
+});
+
 test('--agent and FLOORPLAN_AGENT override the guess, and nonsense is ignored', () => {
   assert.equal(detectAgent({ agent: 'codex' }, {}), 'codex');
   assert.equal(detectAgent({ agent: 'Claude' }, { CODEX_THREAD_ID: 'abc' }), 'claude');
@@ -29,6 +43,18 @@ test('a map built under Codex records it, and leaves the project notes alone', (
     const out = run('build.mjs', root, '--agent', 'codex');
     assert.equal(readGraph(root).meta.agent, 'codex');
     assert.match(out, /AGENT {2}Codex/);
+    assert.ok(!fs.existsSync(path.join(root, 'CLAUDE.local.md')), 'no CLAUDE.local.md');
+    assert.ok(!fs.existsSync(path.join(root, 'AGENTS.md')), 'no AGENTS.md');
+  } finally { cleanup(root); }
+});
+
+test('a map built under OpenCode records it, and leaves the project notes alone', () => {
+  const root = shopApp();
+  try {
+    run('scan.mjs', root);
+    const out = run('build.mjs', root, '--agent', 'opencode');
+    assert.equal(readGraph(root).meta.agent, 'opencode');
+    assert.match(out, /AGENT {2}OpenCode/);
     assert.ok(!fs.existsSync(path.join(root, 'CLAUDE.local.md')), 'no CLAUDE.local.md');
     assert.ok(!fs.existsSync(path.join(root, 'AGENTS.md')), 'no AGENTS.md');
   } finally { cleanup(root); }
